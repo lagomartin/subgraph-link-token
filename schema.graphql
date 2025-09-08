@@ -1,30 +1,14 @@
-type Approval @entity(immutable: true) {
-  id: Bytes!
-  owner: Bytes! # address
-  spender: Bytes! # address
-  value: BigInt! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+type Account @entity(immutable: false) {
+  id: Bytes! # Dirección de la wallet
+  balance: BigInt!
+  transfers: [Transfer!]! @derivedFrom(field: "from")
 }
 
 type Transfer @entity(immutable: true) {
-  id: Bytes!
-  from: Bytes! # address
-  to: Bytes! # address
-  value: BigInt! # uint256
-  data: Bytes! # bytes
+  id: Bytes! # Hash de la transacción
+  from: Account!
+  to: Bytes!
+  value: BigInt!
+  timestamp: BigInt!
   blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
-}
-
-type Transfer1 @entity(immutable: true) {
-  id: Bytes!
-  from: Bytes! # address
-  to: Bytes! # address
-  value: BigInt! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
 }

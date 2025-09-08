@@ -1,52 +1,36 @@
-import {
-  Approval as ApprovalEvent,
-  Transfer as TransferEvent,
-  Transfer1 as Transfer1Event
-} from "../generated/LinkToken/LinkToken"
-import { Approval, Transfer, Transfer1 } from "../generated/schema"
-
-export function handleApproval(event: ApprovalEvent): void {
-  let entity = new Approval(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.owner = event.params.owner
-  entity.spender = event.params.spender
-  entity.value = event.params.value
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
-}
+import { Transfer as TransferEvent } from "../generated/LinkToken/LinkToken";
+import { Account, Transfer } from "../generated/schema";
+import { BigInt } from "@graphprotocol/graph-ts";
 
 export function handleTransfer(event: TransferEvent): void {
-  let entity = new Transfer(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.from = event.params.from
-  entity.to = event.params.to
-  entity.value = event.params.value
-  entity.data = event.params.data
+  // --- 1. Crear o Cargar la Cuenta del Emisor (from) ---
+  let fromAddress = event.params.from;
+  let fromAccount = Account.load(fromAddress);
+  if (fromAccount == null) {
+    fromAccount = new Account(fromAddress);
+    fromAccount.balance = BigInt.fromI32(0);
+  }
+  // Restamos el valor de la transferencia de su balance
+  fromAccount.balance = fromAccount.balance.minus(event.params.value);
+  fromAccount.save();
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  // --- 2. Crear o Cargar la Cuenta del Receptor (to) ---
+  let toAddress = event.params.to;
+  let toAccount = Account.load(toAddress);
+  if (toAccount == null) {
+    toAccount = new Account(toAddress);
+    toAccount.balance = BigInt.fromI32(0);
+  }
+  // Sumamos el valor de la transferencia a su balance
+  toAccount.balance = toAccount.balance.plus(event.params.value);
+  toAccount.save();
 
-  entity.save()
-}
-
-export function handleTransfer1(event: Transfer1Event): void {
-  let entity = new Transfer1(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.from = event.params.from
-  entity.to = event.params.to
-  entity.value = event.params.value
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
+  // --- 3. Crear y Guardar la Entidad Transfer ---
+  let transfer = new Transfer(event.transaction.hash);
+  transfer.from = fromAccount.id;
+  transfer.to = event.params.to;
+  transfer.value = event.params.value;
+  transfer.timestamp = event.block.timestamp;
+  transfer.blockNumber = event.block.number;
+  transfer.save();
 }
